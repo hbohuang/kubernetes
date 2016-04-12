@@ -42,7 +42,7 @@ import (
 	"k8s.io/kubernetes/pkg/kubelet/lifecycle"
 	"k8s.io/kubernetes/pkg/kubelet/metrics"
 	"k8s.io/kubernetes/pkg/kubelet/network"
-	"k8s.io/kubernetes/pkg/kubelet/network/hairpin"
+	// "k8s.io/kubernetes/pkg/kubelet/network/hairpin"
 	proberesults "k8s.io/kubernetes/pkg/kubelet/prober/results"
 	"k8s.io/kubernetes/pkg/kubelet/qos"
 	kubetypes "k8s.io/kubernetes/pkg/kubelet/types"
@@ -820,6 +820,12 @@ func (dm *DockerManager) podInfraContainerChanged(pod *api.Pod, podInfraContaine
 		Ports:           ports,
 		ImagePullPolicy: podInfraContainerImagePullPolicy,
 		Env:             dm.podInfraContainerEnv,
+	    SecurityContext: &api.SecurityContext{
+            Capabilities: &api.Capabilities{
+                Add:  []api.Capability{"all"},
+                Drop: []api.Capability{"SYS_TIME"},
+            },
+        },
 	}
 	return podInfraContainerStatus.Hash != kubecontainer.HashContainer(expectedPodInfraContainer), nil
 }
@@ -1626,6 +1632,12 @@ func (dm *DockerManager) createPodInfraContainer(pod *api.Pod) (kubecontainer.Do
 		Ports:           ports,
 		ImagePullPolicy: podInfraContainerImagePullPolicy,
 		Env:             dm.podInfraContainerEnv,
+		SecurityContext: &api.SecurityContext{
+			Capabilities: &api.Capabilities{
+				Add:  []api.Capability{"all"},
+				Drop: []api.Capability{"SYS_TIME"},
+			},
+		},
 	}
 
 	// No pod secrets for the infra container.
@@ -1891,11 +1903,12 @@ func (dm *DockerManager) SyncPod(pod *api.Pod, _ api.PodStatus, podStatus *kubec
 				return
 			}
 
-			if dm.configureHairpinMode {
-				if err = hairpin.SetUpContainer(podInfraContainer.State.Pid, network.DefaultInterfaceName); err != nil {
-					glog.Warningf("Hairpin setup failed for pod %q: %v", format.Pod(pod), err)
-				}
-			}
+			// Setup hairpin cause some bug here	
+			//if dm.configureHairpinMode {
+			//	if err = hairpin.SetUpContainer(podInfraContainer.State.Pid, network.DefaultInterfaceName); err != nil {
+			//	    glog.Warningf("Hairpin setup failed for pod %q: %v", format.Pod(pod), err)
+			//	}
+			//}
 
 			// Overwrite the podIP passed in the pod status, since we just started the infra container.
 			podIP = dm.determineContainerIP(pod.Name, pod.Namespace, podInfraContainer)

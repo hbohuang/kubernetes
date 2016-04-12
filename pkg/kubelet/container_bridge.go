@@ -75,8 +75,10 @@ func ensureCbr0(wantCIDR *net.IPNet, promiscuous, babysitDaemons bool) error {
 	}
 	if !exists {
 		glog.V(2).Infof("CBR0 doesn't exist, attempting to create it with range: %s", wantCIDR)
-		return createCBR0(wantCIDR, babysitDaemons)
+		//return createCBR0(wantCIDR, babysitDaemons)
+        return nil
 	}
+	return nil
 	if !cbr0CidrCorrect(wantCIDR) {
 		glog.V(2).Infof("Attempting to recreate cbr0 with address range: %s", wantCIDR)
 

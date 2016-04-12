@@ -30,6 +30,7 @@ import (
 	utildbus "k8s.io/kubernetes/pkg/util/dbus"
 	utilexec "k8s.io/kubernetes/pkg/util/exec"
 	"k8s.io/kubernetes/pkg/util/sets"
+	"net"
 )
 
 type RulePosition string
@@ -410,6 +411,11 @@ func (runner *runner) checkRuleWithoutCheck(table Table, chain Chain, args ...st
 	var argsCopy []string
 	for i := range args {
 		tmpField := strings.Trim(args[i], "\"")
+		if IsCIDRForm(tmpField) {
+			if _, ipNet, err := net.ParseCIDR(tmpField); err == nil {
+				tmpField = ipNet.String()
+			}
+		}
 		argsCopy = append(argsCopy, strings.Fields(tmpField)...)
 	}
 	argset := sets.NewString(argsCopy...)
@@ -592,4 +598,12 @@ func IsNotFoundError(err error) bool {
 		return true
 	}
 	return false
+}
+
+// IsCIDRForm return true if 's' is IP/MASK format
+func IsCIDRForm(s string) bool {
+	if m, _ := regexp.MatchString("^[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}/[0-9]{1,2}$", s); !m {
+		return false
+	}
+	return true
 }

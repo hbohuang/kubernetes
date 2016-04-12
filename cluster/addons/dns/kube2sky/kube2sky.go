@@ -253,7 +253,7 @@ func (ks *kube2sky) handlePodCreate(obj interface{}) {
 	if e, ok := obj.(*kapi.Pod); ok {
 		// If the pod ip is not yet available, do not attempt to create.
 		if e.Status.PodIP != "" {
-			name := buildDNSNameString(ks.domain, podSubdomain, e.Namespace, santizeIP(e.Status.PodIP))
+			name := buildDNSNameString(ks.domain, podSubdomain, e.Namespace, santizeIP(e.Name))
 			ks.mutateEtcdOrDie(func() error { return ks.generateRecordsForPod(name, e) })
 		}
 	}
@@ -279,7 +279,7 @@ func (ks *kube2sky) handlePodUpdate(old interface{}, new interface{}) {
 func (ks *kube2sky) handlePodDelete(obj interface{}) {
 	if e, ok := obj.(*kapi.Pod); ok {
 		if e.Status.PodIP != "" {
-			name := buildDNSNameString(ks.domain, podSubdomain, e.Namespace, santizeIP(e.Status.PodIP))
+			name := buildDNSNameString(ks.domain, podSubdomain, e.Namespace, santizeIP(e.Name))
 			ks.mutateEtcdOrDie(func() error { return ks.removeDNS(name) })
 		}
 	}

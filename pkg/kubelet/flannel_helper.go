@@ -40,7 +40,7 @@ const (
 	flannelNetworkKey = "FLANNEL_NETWORK"
 	flannelMtuKey     = "FLANNEL_MTU"
 	dockerOptsKey     = "DOCKER_OPTS"
-	flannelSubnetFile = "/var/run/flannel/subnet.env"
+	flannelSubnetFile = "/run/flannel/subnet.env"
 )
 
 // A Kubelet to flannel bridging helper.
@@ -87,9 +87,9 @@ func (f *FlannelHelper) Handshake() (podCIDR string, err error) {
 	if err != nil {
 		return "", err
 	}
-	if err = writeDockerOptsFromFlannelConfig(config); err != nil {
-		return "", err
-	}
+	//if err = writeDockerOptsFromFlannelConfig(config); err != nil {
+	//	return "", err
+	//}
 	podCIDR, ok := config[flannelSubnetKey]
 	if !ok {
 		return "", fmt.Errorf("No flannel subnet, config %+v", config)
