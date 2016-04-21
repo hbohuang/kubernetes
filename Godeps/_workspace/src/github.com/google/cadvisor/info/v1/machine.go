@@ -203,3 +203,12 @@ type MachineInfoFactory interface {
 	GetMachineInfo() (*MachineInfo, error)
 	GetVersionInfo() (*VersionInfo, error)
 }
+
+type NUMAInfo struct {
+	// Available node number
+	Nodes int `json:"nodes,omitempty"`
+	// Numa distribution type
+	// e,g. 0 => Horizontal distribution
+	//	1 => vertical distribution
+	Topological string `json:"topological,omitempty"`
+}

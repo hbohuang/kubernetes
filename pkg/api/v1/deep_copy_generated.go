@@ -90,6 +90,10 @@ func deepCopy_v1_Binding(in Binding, out *Binding, c *conversion.Cloner) error {
 	if err := deepCopy_v1_ObjectReference(in.Target, &out.Target, c); err != nil {
 		return err
 	}
+	if err := deepCopy_v1_Network(in.Network, &out.Network, c); err != nil {
+		return err
+	}
+	out.CpuSet = in.CpuSet
 	return nil
 }
 
@@ -1042,6 +1046,12 @@ func deepCopy_v1_NFSVolumeSource(in NFSVolumeSource, out *NFSVolumeSource, c *co
 	return nil
 }
 
+func deepCopy_v1_NUMAInfo(in NUMAInfo, out *NUMAInfo, c *conversion.Cloner) error {
+	out.Nodes = in.Nodes
+	out.Topological = in.Topological
+	return nil
+}
+
 func deepCopy_v1_Namespace(in Namespace, out *Namespace, c *conversion.Cloner) error {
 	if err := deepCopy_unversioned_TypeMeta(in.TypeMeta, &out.TypeMeta, c); err != nil {
 		return err
@@ -1095,6 +1105,15 @@ func deepCopy_v1_NamespaceStatus(in NamespaceStatus, out *NamespaceStatus, c *co
 	return nil
 }
 
+func deepCopy_v1_Network(in Network, out *Network, c *conversion.Cloner) error {
+	out.Mode = in.Mode
+	out.MacAddress = in.MacAddress
+	out.Address = in.Address
+	out.Gateway = in.Gateway
+	out.VlanID = in.VlanID
+	return nil
+}
+
 func deepCopy_v1_Node(in Node, out *Node, c *conversion.Cloner) error {
 	if err := deepCopy_unversioned_TypeMeta(in.TypeMeta, &out.TypeMeta, c); err != nil {
 		return err
@@ -1107,6 +1126,16 @@ func deepCopy_v1_Node(in Node, out *Node, c *conversion.Cloner) error {
 	}
 	if err := deepCopy_v1_NodeStatus(in.Status, &out.Status, c); err != nil {
 		return err
+	}
+	if in.VMs != nil {
+		out.VMs = make([]VM, len(in.VMs))
+		for i := range in.VMs {
+			if err := deepCopy_v1_VM(in.VMs[i], &out.VMs[i], c); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.VMs = nil
 	}
 	return nil
 }
@@ -1248,6 +1277,9 @@ func deepCopy_v1_NodeSystemInfo(in NodeSystemInfo, out *NodeSystemInfo, c *conve
 	out.ContainerRuntimeVersion = in.ContainerRuntimeVersion
 	out.KubeletVersion = in.KubeletVersion
 	out.KubeProxyVersion = in.KubeProxyVersion
+	if err := deepCopy_v1_NUMAInfo(in.NUMAInfo, &out.NUMAInfo, c); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -1814,6 +1846,7 @@ func deepCopy_v1_PodSpec(in PodSpec, out *PodSpec, c *conversion.Cloner) error {
 	} else {
 		out.ImagePullSecrets = nil
 	}
+	out.NetworkMode = in.NetworkMode
 	return nil
 }
 
@@ -1851,6 +1884,10 @@ func deepCopy_v1_PodStatus(in PodStatus, out *PodStatus, c *conversion.Cloner) e
 	} else {
 		out.ContainerStatuses = nil
 	}
+	if err := deepCopy_v1_Network(in.Network, &out.Network, c); err != nil {
+		return err
+	}
+	out.CpuSet = in.CpuSet
 	return nil
 }
 
@@ -2431,6 +2468,15 @@ func deepCopy_v1_TCPSocketAction(in TCPSocketAction, out *TCPSocketAction, c *co
 	return nil
 }
 
+func deepCopy_v1_VM(in VM, out *VM, c *conversion.Cloner) error {
+	out.AssetID = in.AssetID
+	out.Address = in.Address
+	out.Gateway = in.Gateway
+	out.VlanID = in.VlanID
+	out.MacAddress = in.MacAddress
+	return nil
+}
+
 func deepCopy_v1_Volume(in Volume, out *Volume, c *conversion.Cloner) error {
 	out.Name = in.Name
 	if err := deepCopy_v1_VolumeSource(in.VolumeSource, &out.VolumeSource, c); err != nil {
@@ -2695,10 +2741,12 @@ func init() {
 		deepCopy_v1_LoadBalancerStatus,
 		deepCopy_v1_LocalObjectReference,
 		deepCopy_v1_NFSVolumeSource,
+		deepCopy_v1_NUMAInfo,
 		deepCopy_v1_Namespace,
 		deepCopy_v1_NamespaceList,
 		deepCopy_v1_NamespaceSpec,
 		deepCopy_v1_NamespaceStatus,
+		deepCopy_v1_Network,
 		deepCopy_v1_Node,
 		deepCopy_v1_NodeAddress,
 		deepCopy_v1_NodeCondition,
@@ -2763,6 +2811,7 @@ func init() {
 		deepCopy_v1_ServiceSpec,
 		deepCopy_v1_ServiceStatus,
 		deepCopy_v1_TCPSocketAction,
+		deepCopy_v1_VM,
 		deepCopy_v1_Volume,
 		deepCopy_v1_VolumeMount,
 		deepCopy_v1_VolumeSource,

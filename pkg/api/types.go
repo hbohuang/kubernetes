@@ -1225,6 +1225,8 @@ type PodSpec struct {
 	// If specified, these secrets will be passed to individual puller implementations for them to use.  For example,
 	// in the case of docker, only DockerConfig type secrets are honored.
 	ImagePullSecrets []LocalObjectReference `json:"imagePullSecrets,omitempty"`
+	// Custom network setting. e,g. flannel\macvlan
+	NetworkMode string `json:"networkMode,omitempty"`
 }
 
 // PodSecurityContext holds pod-level security attributes and common container settings.
@@ -1299,6 +1301,10 @@ type PodStatus struct {
 	// TODO: Make real decisions about what our info should look like. Re-enable fuzz test
 	// when we have done this.
 	ContainerStatuses []ContainerStatus `json:"containerStatuses,omitempty"`
+	// Network info
+	Network Network `json:"network,omitempty"`
+	// CPU set("1,3")
+	CpuSet string `json:"cpuSet,omitempty"`
 }
 
 // PodStatusResult is a wrapper for PodStatus returned by kubelet that can be encode/decoded
@@ -1699,6 +1705,8 @@ type NodeSystemInfo struct {
 	KubeletVersion string `json:"kubeletVersion"`
 	// KubeProxy Version reported by the node.
 	KubeProxyVersion string `json:"kubeProxyVersion"`
+	// NUMA info reported by the node
+	NUMAInfo NUMAInfo `json:"numaInfo,omitempty"`
 }
 
 // NodeStatus is information about the current status of a node.
@@ -1815,6 +1823,9 @@ type Node struct {
 
 	// Status describes the current status of a Node
 	Status NodeStatus `json:"status,omitempty"`
+
+	// vm infomation
+	VMs []VM `json:"vms,omitempty"`
 }
 
 // NodeList is a list of nodes.
@@ -1884,7 +1895,9 @@ type Binding struct {
 	ObjectMeta `json:"metadata,omitempty"`
 
 	// Target is the object to bind to.
-	Target ObjectReference `json:"target"`
+	Target  ObjectReference `json:"target"`
+	Network Network         `json:"network,omitempty"`
+	CpuSet  string          `json:"cpuSet,omitempty"`
 }
 
 // DeleteOptions may be provided when deleting an API object
@@ -2540,3 +2553,47 @@ const (
 	// "default-scheduler" is the name of default scheduler.
 	DefaultSchedulerName = "default-scheduler"
 )
+
+const (
+	PodNetworkModeMacVlan = "macvlan"
+	PodNetworkModeHost    = "host"
+	PodNetworkModeNone    = "none"
+	PodNetworkFlannel     = "flannel"
+)
+
+// Inner vm info on host
+type VM struct {
+	//Asset ID
+	AssetID string `json:"assetID,omitempty"`
+	// Address contains the IPv4 and mask to set on the network interface
+	Address string `json:"address,omitempty"`
+	// Gateway sets the gateway address that is used as the default for the interface
+	Gateway string `json:"gateway,omitempty"`
+	//VLAN ID
+	VlanID int `json:"vlanID,omitempty"`
+	// MacAddress contains the MAC address to set on the network interface
+	MacAddress string `json:"macAddress,omitempty"`
+}
+
+type NUMAInfo struct {
+	// Available node number
+	Nodes int `json:"nodes,omitempty"`
+	// Numa distribution type
+	// e,g.	0 => Horizontal distribution
+	//		1 => vertical distribution
+	Topological string `json:"topological,omitempty"`
+}
+
+// Network for Pod
+type Network struct {
+	// Mode: host, nat, bridge, none
+	Mode string `json:"mode,omitempty"`
+	// MacAddress contains the MAC address to set on the network interface
+	MacAddress string `json:"macAddress,omitempty"`
+	// Address contains the IPv4 and mask to set on the network interface
+	Address string `json:"address,omitempty"`
+	// Gateway sets the gateway address that is used as the default for the interface
+	Gateway string `json:"gateway,omitempty"`
+	// VLAN ID
+	VlanID int `json:"vlanID,omitempty"`
+}

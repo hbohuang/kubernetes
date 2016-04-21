@@ -131,6 +131,9 @@ func addDefaultingFuncs(scheme *runtime.Scheme) {
 				period := int64(DefaultTerminationGracePeriodSeconds)
 				obj.TerminationGracePeriodSeconds = &period
 			}
+			if obj.NetworkMode == "" {
+				obj.NetworkMode = DefaultPodNetworkMode
+			}
 		},
 		func(obj *Probe) {
 			if obj.TimeoutSeconds == 0 {

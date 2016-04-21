@@ -492,6 +492,7 @@ func describePod(pod *api.Pod, events *api.EventList) (string, error) {
 	return tabbedString(func(out io.Writer) error {
 		fmt.Fprintf(out, "Name:\t%s\n", pod.Name)
 		fmt.Fprintf(out, "Namespace:\t%s\n", pod.Namespace)
+		fmt.Fprintf(out, "NetworkMode:\t%s\n", pod.Spec.NetworkMode)
 		fmt.Fprintf(out, "Node:\t%s\n", pod.Spec.NodeName+"/"+pod.Status.HostIP)
 		if pod.Status.StartTime != nil {
 			fmt.Fprintf(out, "Start Time:\t%s\n", pod.Status.StartTime.Time.Format(time.RFC1123Z))
@@ -510,6 +511,17 @@ func describePod(pod *api.Pod, events *api.EventList) (string, error) {
 			fmt.Fprintf(out, "Message:\t%s\n", pod.Status.Message)
 		}
 		fmt.Fprintf(out, "IP:\t%s\n", pod.Status.PodIP)
+		if pod.Spec.NetworkMode == api.PodNetworkModeMacVlan {
+			fmt.Fprint(out, "InnerIP info:\n  Address\tMacAddress\tGateway\tVlanID\n")
+			fmt.Fprint(out, "  -----------------\t-----------------\t-----------------\t-----------------\t-----\n")
+			fmt.Fprintf(out, "  %s\t%s\t%s\t%d\n",
+				pod.Status.Network.Address,
+				pod.Status.Network.MacAddress,
+				pod.Status.Network.Gateway,
+				pod.Status.Network.VlanID)
+
+		}
+		fmt.Fprintf(out, "CPUSet:\t%s\n", pod.Status.CpuSet)
 		fmt.Fprintf(out, "Controllers:\t%s\n", printControllers(pod.Annotations))
 		fmt.Fprintf(out, "Containers:\n")
 		DescribeContainers(pod.Spec.Containers, pod.Status.ContainerStatuses, EnvValueRetriever(pod), out)
@@ -1583,6 +1595,8 @@ func describeNode(node *api.Node, nodeNonTerminatedPodsList *api.PodList, events
 		fmt.Fprintf(out, " Container Runtime Version:\t%s\n", node.Status.NodeInfo.ContainerRuntimeVersion)
 		fmt.Fprintf(out, " Kubelet Version:\t%s\n", node.Status.NodeInfo.KubeletVersion)
 		fmt.Fprintf(out, " Kube-Proxy Version:\t%s\n", node.Status.NodeInfo.KubeProxyVersion)
+		fmt.Fprintf(out, " NUMA Nodes:\t%d\n", node.Status.NodeInfo.NUMAInfo.Nodes)
+		fmt.Fprintf(out, " NUMA topological:\t%s\n", node.Status.NodeInfo.NUMAInfo.Topological)
 
 		if len(node.Spec.PodCIDR) > 0 {
 			fmt.Fprintf(out, "PodCIDR:\t%s\n", node.Spec.PodCIDR)
@@ -1597,11 +1611,31 @@ func describeNode(node *api.Node, nodeNonTerminatedPodsList *api.PodList, events
 		} else {
 			fmt.Fprintf(out, "Pods:\tnot authorized\n")
 		}
+		if node.VMs != nil {
+			DescribeVMs(node, out)
+		}
 		if events != nil {
 			DescribeEvents(events, out)
 		}
 		return nil
 	})
+}
+
+func DescribeVMs(node *api.Node, w io.Writer) {
+	if len(node.VMs) == 0 {
+		fmt.Fprint(w, "No VMs.")
+		return
+	}
+	fmt.Fprint(w, "VMs:\n  AssetID\tAddress\tMacAddress\tGateway\tVlanID\n")
+	fmt.Fprint(w, "  -----------------\t-----------------\t-----------------\t-----------------\t-----\n")
+	for _, vm := range node.VMs {
+		fmt.Fprintf(w, "  %s\t%s\t%s\t%s\t%d\n",
+			vm.AssetID,
+			vm.Address,
+			vm.MacAddress,
+			vm.Gateway,
+			vm.VlanID)
+	}
 }
 
 // HorizontalPodAutoscalerDescriber generates information about a horizontal pod autoscaler.

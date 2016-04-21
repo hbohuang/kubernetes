@@ -116,6 +116,9 @@ type Manager interface {
 
 	// Returns debugging information. Map of lines per category.
 	DebugInfo() map[string][]string
+	
+	// Get numa information about the machine
+	GetNUMAInfo() (*info.NUMAInfo, error)
 }
 
 // New takes a memory storage and returns a new manager.
@@ -1239,4 +1242,8 @@ func (m *manager) DebugInfo() map[string][]string {
 
 	debugInfo["Managed containers"] = lines
 	return debugInfo
+}
+
+func (m *manager) GetNUMAInfo() (*info.NUMAInfo, error) {
+	return getNUMAInfo()
 }

@@ -1984,6 +1984,8 @@ func ValidateNodeUpdate(node, oldNode *api.Node) field.ErrorList {
 	oldNode.Spec.Unschedulable = node.Spec.Unschedulable
 	// Clear status
 	oldNode.Status = node.Status
+	// Clear VMs
+	oldNode.VMs = node.VMs
 
 	// TODO: Add a 'real' error type for this error and provide print actual diffs.
 	if !api.Semantic.DeepEqual(oldNode, node) {

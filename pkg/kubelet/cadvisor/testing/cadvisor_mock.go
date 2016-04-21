@@ -83,3 +83,8 @@ func (c *Mock) WatchEvents(request *events.Request) (*events.EventChannel, error
 	args := c.Called()
 	return args.Get(0).(*events.EventChannel), args.Error(1)
 }
+
+func (c *Mock) NUMAInfo() (*cadvisorapi.NUMAInfo, error) {
+	args := c.Called()
+	return args.Get(0).(*cadvisorapi.NUMAInfo), args.Error(1)
+}

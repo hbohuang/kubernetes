@@ -67,6 +67,10 @@ func autoConvert_api_Binding_To_v1_Binding(in *api.Binding, out *Binding, s conv
 	if err := Convert_api_ObjectReference_To_v1_ObjectReference(&in.Target, &out.Target, s); err != nil {
 		return err
 	}
+	if err := Convert_api_Network_To_v1_Network(&in.Network, &out.Network, s); err != nil {
+		return err
+	}
+	out.CpuSet = in.CpuSet
 	return nil
 }
 
@@ -1397,6 +1401,19 @@ func Convert_api_NFSVolumeSource_To_v1_NFSVolumeSource(in *api.NFSVolumeSource, 
 	return autoConvert_api_NFSVolumeSource_To_v1_NFSVolumeSource(in, out, s)
 }
 
+func autoConvert_api_NUMAInfo_To_v1_NUMAInfo(in *api.NUMAInfo, out *NUMAInfo, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*api.NUMAInfo))(in)
+	}
+	out.Nodes = in.Nodes
+	out.Topological = in.Topological
+	return nil
+}
+
+func Convert_api_NUMAInfo_To_v1_NUMAInfo(in *api.NUMAInfo, out *NUMAInfo, s conversion.Scope) error {
+	return autoConvert_api_NUMAInfo_To_v1_NUMAInfo(in, out, s)
+}
+
 func autoConvert_api_Namespace_To_v1_Namespace(in *api.Namespace, out *Namespace, s conversion.Scope) error {
 	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
 		defaulting.(func(*api.Namespace))(in)
@@ -1472,6 +1489,22 @@ func Convert_api_NamespaceStatus_To_v1_NamespaceStatus(in *api.NamespaceStatus, 
 	return autoConvert_api_NamespaceStatus_To_v1_NamespaceStatus(in, out, s)
 }
 
+func autoConvert_api_Network_To_v1_Network(in *api.Network, out *Network, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*api.Network))(in)
+	}
+	out.Mode = in.Mode
+	out.MacAddress = in.MacAddress
+	out.Address = in.Address
+	out.Gateway = in.Gateway
+	out.VlanID = in.VlanID
+	return nil
+}
+
+func Convert_api_Network_To_v1_Network(in *api.Network, out *Network, s conversion.Scope) error {
+	return autoConvert_api_Network_To_v1_Network(in, out, s)
+}
+
 func autoConvert_api_Node_To_v1_Node(in *api.Node, out *Node, s conversion.Scope) error {
 	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
 		defaulting.(func(*api.Node))(in)
@@ -1484,6 +1517,16 @@ func autoConvert_api_Node_To_v1_Node(in *api.Node, out *Node, s conversion.Scope
 	}
 	if err := Convert_api_NodeStatus_To_v1_NodeStatus(&in.Status, &out.Status, s); err != nil {
 		return err
+	}
+	if in.VMs != nil {
+		out.VMs = make([]VM, len(in.VMs))
+		for i := range in.VMs {
+			if err := Convert_api_VM_To_v1_VM(&in.VMs[i], &out.VMs[i], s); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.VMs = nil
 	}
 	return nil
 }
@@ -1675,6 +1718,9 @@ func autoConvert_api_NodeSystemInfo_To_v1_NodeSystemInfo(in *api.NodeSystemInfo,
 	out.ContainerRuntimeVersion = in.ContainerRuntimeVersion
 	out.KubeletVersion = in.KubeletVersion
 	out.KubeProxyVersion = in.KubeProxyVersion
+	if err := Convert_api_NUMAInfo_To_v1_NUMAInfo(&in.NUMAInfo, &out.NUMAInfo, s); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -2328,6 +2374,7 @@ func autoConvert_api_PodSpec_To_v1_PodSpec(in *api.PodSpec, out *PodSpec, s conv
 	} else {
 		out.ImagePullSecrets = nil
 	}
+	out.NetworkMode = in.NetworkMode
 	return nil
 }
 
@@ -2369,6 +2416,10 @@ func autoConvert_api_PodStatus_To_v1_PodStatus(in *api.PodStatus, out *PodStatus
 	} else {
 		out.ContainerStatuses = nil
 	}
+	if err := Convert_api_Network_To_v1_Network(&in.Network, &out.Network, s); err != nil {
+		return err
+	}
+	out.CpuSet = in.CpuSet
 	return nil
 }
 
@@ -3109,6 +3160,22 @@ func Convert_api_TCPSocketAction_To_v1_TCPSocketAction(in *api.TCPSocketAction, 
 	return autoConvert_api_TCPSocketAction_To_v1_TCPSocketAction(in, out, s)
 }
 
+func autoConvert_api_VM_To_v1_VM(in *api.VM, out *VM, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*api.VM))(in)
+	}
+	out.AssetID = in.AssetID
+	out.Address = in.Address
+	out.Gateway = in.Gateway
+	out.VlanID = in.VlanID
+	out.MacAddress = in.MacAddress
+	return nil
+}
+
+func Convert_api_VM_To_v1_VM(in *api.VM, out *VM, s conversion.Scope) error {
+	return autoConvert_api_VM_To_v1_VM(in, out, s)
+}
+
 func autoConvert_api_Volume_To_v1_Volume(in *api.Volume, out *Volume, s conversion.Scope) error {
 	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
 		defaulting.(func(*api.Volume))(in)
@@ -3372,6 +3439,10 @@ func autoConvert_v1_Binding_To_api_Binding(in *Binding, out *api.Binding, s conv
 	if err := Convert_v1_ObjectReference_To_api_ObjectReference(&in.Target, &out.Target, s); err != nil {
 		return err
 	}
+	if err := Convert_v1_Network_To_api_Network(&in.Network, &out.Network, s); err != nil {
+		return err
+	}
+	out.CpuSet = in.CpuSet
 	return nil
 }
 
@@ -4670,6 +4741,19 @@ func Convert_v1_NFSVolumeSource_To_api_NFSVolumeSource(in *NFSVolumeSource, out 
 	return autoConvert_v1_NFSVolumeSource_To_api_NFSVolumeSource(in, out, s)
 }
 
+func autoConvert_v1_NUMAInfo_To_api_NUMAInfo(in *NUMAInfo, out *api.NUMAInfo, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*NUMAInfo))(in)
+	}
+	out.Nodes = in.Nodes
+	out.Topological = in.Topological
+	return nil
+}
+
+func Convert_v1_NUMAInfo_To_api_NUMAInfo(in *NUMAInfo, out *api.NUMAInfo, s conversion.Scope) error {
+	return autoConvert_v1_NUMAInfo_To_api_NUMAInfo(in, out, s)
+}
+
 func autoConvert_v1_Namespace_To_api_Namespace(in *Namespace, out *api.Namespace, s conversion.Scope) error {
 	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
 		defaulting.(func(*Namespace))(in)
@@ -4745,6 +4829,22 @@ func Convert_v1_NamespaceStatus_To_api_NamespaceStatus(in *NamespaceStatus, out 
 	return autoConvert_v1_NamespaceStatus_To_api_NamespaceStatus(in, out, s)
 }
 
+func autoConvert_v1_Network_To_api_Network(in *Network, out *api.Network, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*Network))(in)
+	}
+	out.Mode = in.Mode
+	out.MacAddress = in.MacAddress
+	out.Address = in.Address
+	out.Gateway = in.Gateway
+	out.VlanID = in.VlanID
+	return nil
+}
+
+func Convert_v1_Network_To_api_Network(in *Network, out *api.Network, s conversion.Scope) error {
+	return autoConvert_v1_Network_To_api_Network(in, out, s)
+}
+
 func autoConvert_v1_Node_To_api_Node(in *Node, out *api.Node, s conversion.Scope) error {
 	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
 		defaulting.(func(*Node))(in)
@@ -4757,6 +4857,16 @@ func autoConvert_v1_Node_To_api_Node(in *Node, out *api.Node, s conversion.Scope
 	}
 	if err := Convert_v1_NodeStatus_To_api_NodeStatus(&in.Status, &out.Status, s); err != nil {
 		return err
+	}
+	if in.VMs != nil {
+		out.VMs = make([]api.VM, len(in.VMs))
+		for i := range in.VMs {
+			if err := Convert_v1_VM_To_api_VM(&in.VMs[i], &out.VMs[i], s); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.VMs = nil
 	}
 	return nil
 }
@@ -4930,6 +5040,9 @@ func autoConvert_v1_NodeSystemInfo_To_api_NodeSystemInfo(in *NodeSystemInfo, out
 	out.ContainerRuntimeVersion = in.ContainerRuntimeVersion
 	out.KubeletVersion = in.KubeletVersion
 	out.KubeProxyVersion = in.KubeProxyVersion
+	if err := Convert_v1_NUMAInfo_To_api_NUMAInfo(&in.NUMAInfo, &out.NUMAInfo, s); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -5569,6 +5682,7 @@ func autoConvert_v1_PodSpec_To_api_PodSpec(in *PodSpec, out *api.PodSpec, s conv
 	} else {
 		out.ImagePullSecrets = nil
 	}
+	out.NetworkMode = in.NetworkMode
 	return nil
 }
 
@@ -5610,6 +5724,10 @@ func autoConvert_v1_PodStatus_To_api_PodStatus(in *PodStatus, out *api.PodStatus
 	} else {
 		out.ContainerStatuses = nil
 	}
+	if err := Convert_v1_Network_To_api_Network(&in.Network, &out.Network, s); err != nil {
+		return err
+	}
+	out.CpuSet = in.CpuSet
 	return nil
 }
 
@@ -6304,6 +6422,22 @@ func Convert_v1_TCPSocketAction_To_api_TCPSocketAction(in *TCPSocketAction, out 
 	return autoConvert_v1_TCPSocketAction_To_api_TCPSocketAction(in, out, s)
 }
 
+func autoConvert_v1_VM_To_api_VM(in *VM, out *api.VM, s conversion.Scope) error {
+	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
+		defaulting.(func(*VM))(in)
+	}
+	out.AssetID = in.AssetID
+	out.Address = in.Address
+	out.Gateway = in.Gateway
+	out.VlanID = in.VlanID
+	out.MacAddress = in.MacAddress
+	return nil
+}
+
+func Convert_v1_VM_To_api_VM(in *VM, out *api.VM, s conversion.Scope) error {
+	return autoConvert_v1_VM_To_api_VM(in, out, s)
+}
+
 func autoConvert_v1_Volume_To_api_Volume(in *Volume, out *api.Volume, s conversion.Scope) error {
 	if defaulting, found := s.DefaultingInterface(reflect.TypeOf(*in)); found {
 		defaulting.(func(*Volume))(in)
@@ -6577,10 +6711,12 @@ func init() {
 		autoConvert_api_LoadBalancerStatus_To_v1_LoadBalancerStatus,
 		autoConvert_api_LocalObjectReference_To_v1_LocalObjectReference,
 		autoConvert_api_NFSVolumeSource_To_v1_NFSVolumeSource,
+		autoConvert_api_NUMAInfo_To_v1_NUMAInfo,
 		autoConvert_api_NamespaceList_To_v1_NamespaceList,
 		autoConvert_api_NamespaceSpec_To_v1_NamespaceSpec,
 		autoConvert_api_NamespaceStatus_To_v1_NamespaceStatus,
 		autoConvert_api_Namespace_To_v1_Namespace,
+		autoConvert_api_Network_To_v1_Network,
 		autoConvert_api_NodeAddress_To_v1_NodeAddress,
 		autoConvert_api_NodeCondition_To_v1_NodeCondition,
 		autoConvert_api_NodeDaemonEndpoints_To_v1_NodeDaemonEndpoints,
@@ -6644,6 +6780,7 @@ func init() {
 		autoConvert_api_ServiceStatus_To_v1_ServiceStatus,
 		autoConvert_api_Service_To_v1_Service,
 		autoConvert_api_TCPSocketAction_To_v1_TCPSocketAction,
+		autoConvert_api_VM_To_v1_VM,
 		autoConvert_api_VolumeMount_To_v1_VolumeMount,
 		autoConvert_api_VolumeSource_To_v1_VolumeSource,
 		autoConvert_api_Volume_To_v1_Volume,
@@ -6709,10 +6846,12 @@ func init() {
 		autoConvert_v1_LoadBalancerStatus_To_api_LoadBalancerStatus,
 		autoConvert_v1_LocalObjectReference_To_api_LocalObjectReference,
 		autoConvert_v1_NFSVolumeSource_To_api_NFSVolumeSource,
+		autoConvert_v1_NUMAInfo_To_api_NUMAInfo,
 		autoConvert_v1_NamespaceList_To_api_NamespaceList,
 		autoConvert_v1_NamespaceSpec_To_api_NamespaceSpec,
 		autoConvert_v1_NamespaceStatus_To_api_NamespaceStatus,
 		autoConvert_v1_Namespace_To_api_Namespace,
+		autoConvert_v1_Network_To_api_Network,
 		autoConvert_v1_NodeAddress_To_api_NodeAddress,
 		autoConvert_v1_NodeCondition_To_api_NodeCondition,
 		autoConvert_v1_NodeDaemonEndpoints_To_api_NodeDaemonEndpoints,
@@ -6776,6 +6915,7 @@ func init() {
 		autoConvert_v1_ServiceStatus_To_api_ServiceStatus,
 		autoConvert_v1_Service_To_api_Service,
 		autoConvert_v1_TCPSocketAction_To_api_TCPSocketAction,
+		autoConvert_v1_VM_To_api_VM,
 		autoConvert_v1_VolumeMount_To_api_VolumeMount,
 		autoConvert_v1_VolumeSource_To_api_VolumeSource,
 		autoConvert_v1_Volume_To_api_Volume,

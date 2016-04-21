@@ -190,3 +190,7 @@ func (cc *cadvisorClient) getFsInfo(label string) (cadvisorapiv2.FsInfo, error) 
 func (cc *cadvisorClient) WatchEvents(request *events.Request) (*events.EventChannel, error) {
 	return cc.WatchForEvents(request)
 }
+
+func (cc *cadvisorClient) NUMAInfo() (*cadvisorapi.NUMAInfo, error) {
+	return cc.GetNUMAInfo()
+}

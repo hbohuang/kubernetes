@@ -2917,6 +2917,17 @@ func (kl *Kubelet) setNodeStatusVersionInfo(node *api.Node) {
 
 }
 
+// Set numainfo for the node.
+func (kl *Kubelet) setNodeStatusNUMAInfo(node *api.Node) {
+	numaInfo, err := kl.cadvisor.NUMAInfo()
+	if err != nil {
+		glog.Errorf("Error getting numa info: %v", err)
+	} else {
+		node.Status.NodeInfo.NUMAInfo.Nodes = numaInfo.Nodes
+		node.Status.NodeInfo.NUMAInfo.Topological = numaInfo.Topological
+	}
+}
+
 // Set daemonEndpoints for the node.
 func (kl *Kubelet) setNodeStatusDaemonEndpoints(node *api.Node) {
 	node.Status.DaemonEndpoints = *kl.daemonEndpoints
@@ -2946,6 +2957,7 @@ func (kl *Kubelet) setNodeStatusInfo(node *api.Node) {
 	kl.setNodeStatusVersionInfo(node)
 	kl.setNodeStatusDaemonEndpoints(node)
 	kl.setNodeStatusImages(node)
+	kl.setNodeStatusNUMAInfo(node)
 }
 
 // Set Readycondition for the node.

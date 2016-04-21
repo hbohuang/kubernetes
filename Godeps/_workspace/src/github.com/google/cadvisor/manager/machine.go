@@ -17,8 +17,12 @@ package manager
 import (
 	"bytes"
 	"flag"
+	"fmt"
 	"io/ioutil"
+	"os/exec"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -180,4 +184,43 @@ func getKernelVersion() string {
 	release = release[:bytes.IndexByte(release, 0)]
 
 	return string(release)
+}
+
+func getNUMAInfo() (*info.NUMAInfo, error) {
+	// match numa node. e,g. "available: 2 nodes (0-1)"
+	availableNodesRegexp := regexp.MustCompile(`\w+:\s*(\d)`)
+	var (
+		nodes       int
+		topological string
+	)
+	out, err := exec.Command("numactl", "--hardware").CombinedOutput()
+	if err != nil {
+		return nil, err
+	}
+	parts := strings.Split(string(out), "\n")
+	if len(parts) <= 0 {
+		return nil, fmt.Errorf("numa information is empty")
+	}
+	match := availableNodesRegexp.FindStringSubmatch(parts[0])
+	if len(match) < 2 {
+		return nil, fmt.Errorf("Failed to get nuam nodes")
+	}
+	nodes, err = strconv.Atoi(match[1])
+	if err != nil {
+		return nil, err
+	}
+	for _, item := range parts {
+		if strings.Contains(item, "cpus") {
+			if ok, _ := regexp.Match(`\b0\s+1\b`, []byte(item)); !ok {
+				topological = "1"
+			} else {
+				topological = "0"
+			}
+			break
+		}
+	}
+	return &info.NUMAInfo{
+		Nodes:       nodes,
+		Topological: topological,
+	}, nil
 }

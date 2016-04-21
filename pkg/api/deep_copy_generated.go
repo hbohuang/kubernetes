@@ -94,10 +94,12 @@ func init() {
 		DeepCopy_api_LoadBalancerStatus,
 		DeepCopy_api_LocalObjectReference,
 		DeepCopy_api_NFSVolumeSource,
+		DeepCopy_api_NUMAInfo,
 		DeepCopy_api_Namespace,
 		DeepCopy_api_NamespaceList,
 		DeepCopy_api_NamespaceSpec,
 		DeepCopy_api_NamespaceStatus,
+		DeepCopy_api_Network,
 		DeepCopy_api_Node,
 		DeepCopy_api_NodeAddress,
 		DeepCopy_api_NodeAffinity,
@@ -168,6 +170,7 @@ func init() {
 		DeepCopy_api_ServiceSpec,
 		DeepCopy_api_ServiceStatus,
 		DeepCopy_api_TCPSocketAction,
+		DeepCopy_api_VM,
 		DeepCopy_api_Volume,
 		DeepCopy_api_VolumeMount,
 		DeepCopy_api_VolumeSource,
@@ -225,6 +228,10 @@ func DeepCopy_api_Binding(in Binding, out *Binding, c *conversion.Cloner) error 
 	if err := DeepCopy_api_ObjectReference(in.Target, &out.Target, c); err != nil {
 		return err
 	}
+	if err := DeepCopy_api_Network(in.Network, &out.Network, c); err != nil {
+		return err
+	}
+	out.CpuSet = in.CpuSet
 	return nil
 }
 
@@ -1256,6 +1263,12 @@ func DeepCopy_api_NFSVolumeSource(in NFSVolumeSource, out *NFSVolumeSource, c *c
 	return nil
 }
 
+func DeepCopy_api_NUMAInfo(in NUMAInfo, out *NUMAInfo, c *conversion.Cloner) error {
+	out.Nodes = in.Nodes
+	out.Topological = in.Topological
+	return nil
+}
+
 func DeepCopy_api_Namespace(in Namespace, out *Namespace, c *conversion.Cloner) error {
 	if err := DeepCopy_unversioned_TypeMeta(in.TypeMeta, &out.TypeMeta, c); err != nil {
 		return err
@@ -1311,6 +1324,15 @@ func DeepCopy_api_NamespaceStatus(in NamespaceStatus, out *NamespaceStatus, c *c
 	return nil
 }
 
+func DeepCopy_api_Network(in Network, out *Network, c *conversion.Cloner) error {
+	out.Mode = in.Mode
+	out.MacAddress = in.MacAddress
+	out.Address = in.Address
+	out.Gateway = in.Gateway
+	out.VlanID = in.VlanID
+	return nil
+}
+
 func DeepCopy_api_Node(in Node, out *Node, c *conversion.Cloner) error {
 	if err := DeepCopy_unversioned_TypeMeta(in.TypeMeta, &out.TypeMeta, c); err != nil {
 		return err
@@ -1323,6 +1345,17 @@ func DeepCopy_api_Node(in Node, out *Node, c *conversion.Cloner) error {
 	}
 	if err := DeepCopy_api_NodeStatus(in.Status, &out.Status, c); err != nil {
 		return err
+	}
+	if in.VMs != nil {
+		in, out := in.VMs, &out.VMs
+		*out = make([]VM, len(in))
+		for i := range in {
+			if err := DeepCopy_api_VM(in[i], &(*out)[i], c); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.VMs = nil
 	}
 	return nil
 }
@@ -1558,6 +1591,9 @@ func DeepCopy_api_NodeSystemInfo(in NodeSystemInfo, out *NodeSystemInfo, c *conv
 	out.ContainerRuntimeVersion = in.ContainerRuntimeVersion
 	out.KubeletVersion = in.KubeletVersion
 	out.KubeProxyVersion = in.KubeProxyVersion
+	if err := DeepCopy_api_NUMAInfo(in.NUMAInfo, &out.NUMAInfo, c); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -2172,6 +2208,7 @@ func DeepCopy_api_PodSpec(in PodSpec, out *PodSpec, c *conversion.Cloner) error 
 	} else {
 		out.ImagePullSecrets = nil
 	}
+	out.NetworkMode = in.NetworkMode
 	return nil
 }
 
@@ -2214,6 +2251,10 @@ func DeepCopy_api_PodStatus(in PodStatus, out *PodStatus, c *conversion.Cloner) 
 	} else {
 		out.ContainerStatuses = nil
 	}
+	if err := DeepCopy_api_Network(in.Network, &out.Network, c); err != nil {
+		return err
+	}
+	out.CpuSet = in.CpuSet
 	return nil
 }
 
@@ -2809,6 +2850,15 @@ func DeepCopy_api_TCPSocketAction(in TCPSocketAction, out *TCPSocketAction, c *c
 	if err := DeepCopy_intstr_IntOrString(in.Port, &out.Port, c); err != nil {
 		return err
 	}
+	return nil
+}
+
+func DeepCopy_api_VM(in VM, out *VM, c *conversion.Cloner) error {
+	out.AssetID = in.AssetID
+	out.Address = in.Address
+	out.Gateway = in.Gateway
+	out.VlanID = in.VlanID
+	out.MacAddress = in.MacAddress
 	return nil
 }
 
