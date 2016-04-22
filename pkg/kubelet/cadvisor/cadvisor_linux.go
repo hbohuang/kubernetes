@@ -47,8 +47,8 @@ var _ Interface = new(cadvisorClient)
 // TODO(vmarmol): Make configurable.
 // The amount of time for which to keep stats in memory.
 const statsCacheDuration = 2 * time.Minute
-const maxHousekeepingInterval = 15 * time.Second
-const defaultHousekeepingInterval = 10 * time.Second
+const maxHousekeepingInterval = 60 * time.Second
+const defaultHousekeepingInterval = 30 * time.Second
 const allowDynamicHousekeeping = true
 
 func init() {
@@ -60,14 +60,18 @@ func init() {
 }
 
 // Creates a cAdvisor and exports its API on the specified port if port > 0.
-func New(port uint) (Interface, error) {
+func New(backendStorageName string, port uint) (Interface, error) {
+	backendStorage, err := NewBackendStorage(backendStorageName)
+	if err != nil {
+		glog.Fatalf("Failed to connect to database: %s", err)
+	}
 	sysFs, err := sysfs.NewRealSysFs()
 	if err != nil {
 		return nil, err
 	}
 
 	// Create and start the cAdvisor container manager.
-	m, err := manager.New(memory.New(statsCacheDuration, nil), sysFs, maxHousekeepingInterval, allowDynamicHousekeeping, cadvisorMetrics.MetricSet{cadvisorMetrics.NetworkTcpUsageMetrics: struct{}{}})
+	m, err := manager.New(memory.New(statsCacheDuration, backendStorage), sysFs, maxHousekeepingInterval, allowDynamicHousekeeping, cadvisorMetrics.MetricSet{cadvisorMetrics.NetworkTcpUsageMetrics: struct{}{}})
 	if err != nil {
 		return nil, err
 	}
@@ -192,5 +196,5 @@ func (cc *cadvisorClient) WatchEvents(request *events.Request) (*events.EventCha
 }
 
 func (cc *cadvisorClient) NUMAInfo() (*cadvisorapi.NUMAInfo, error) {
-	return cc.GetNUMAInfo()
+       return cc.GetNUMAInfo()
 }

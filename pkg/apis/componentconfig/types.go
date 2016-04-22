@@ -187,6 +187,8 @@ type KubeletConfiguration struct {
 	MaxContainerCount int `json:"maxContainerCount"`
 	// cAdvisorPort is the port of the localhost cAdvisor endpoint
 	CAdvisorPort uint `json:"cAdvisorPort"`
+	// cAdvisorDbDriver is the backend storage for data(cadvisor)
+	CAdvisorDbDriver string `json:"cAdvisorDbDriver"`
 	// healthzPort is the port of the localhost healthz endpoint
 	HealthzPort int `json:"healthzPort"`
 	// healthzBindAddress is the IP address for the healthz server to serve
