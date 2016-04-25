@@ -243,6 +243,8 @@ type PodStatus struct {
 	IP string
 	// Status of containers in the pod.
 	ContainerStatuses []*ContainerStatus
+	// CPUSet of the pod
+	CpuSet string
 }
 
 // ContainerStatus represents the status of a container.

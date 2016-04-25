@@ -32,6 +32,7 @@ import (
 	"k8s.io/kubernetes/pkg/util"
 	"k8s.io/kubernetes/plugin/pkg/scheduler/algorithm"
 	"k8s.io/kubernetes/plugin/pkg/scheduler/algorithm/predicates"
+	schedulerapi "k8s.io/kubernetes/plugin/pkg/scheduler/api"
 )
 
 type fakeBinder struct {
@@ -62,8 +63,8 @@ type mockScheduler struct {
 	err     error
 }
 
-func (es mockScheduler) Schedule(pod *api.Pod, ml algorithm.NodeLister) (string, error) {
-	return es.machine, es.err
+func (es mockScheduler) Schedule(pod *api.Pod, ml algorithm.NodeLister) (schedulerapi.SchedulerNode, error) {
+	return schedulerapi.SchedulerNode{Name: es.machine}, es.err
 }
 
 func TestScheduler(t *testing.T) {

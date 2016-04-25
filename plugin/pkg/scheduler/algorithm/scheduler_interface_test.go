@@ -37,8 +37,8 @@ func (st *schedulerTester) expectSchedule(pod *api.Pod, expected string) {
 		st.t.Errorf("Unexpected error %v\nTried to scheduler: %#v", err, pod)
 		return
 	}
-	if actual != expected {
-		st.t.Errorf("Unexpected scheduling value: %v, expected %v", actual, expected)
+	if actual.Host != expected {
+		st.t.Errorf("Unexpected scheduling value: %v, expected %v", actual.Host, expected)
 	}
 }
 

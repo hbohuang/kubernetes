@@ -68,29 +68,29 @@ type genericScheduler struct {
 // Schedule tries to schedule the given pod to one of node in the node list.
 // If it succeeds, it will return the name of the node.
 // If it fails, it will return a Fiterror error with reasons.
-func (g *genericScheduler) Schedule(pod *api.Pod, nodeLister algorithm.NodeLister) (string, error) {
+func (g *genericScheduler) Schedule(pod *api.Pod, nodeLister algorithm.NodeLister) (schedulerapi.SchedulerNode, error) {
 	nodes, err := nodeLister.List()
 	if err != nil {
-		return "", err
+		return schedulerapi.SchedulerNode{}, err
 	}
 	if len(nodes.Items) == 0 {
-		return "", ErrNoNodesAvailable
+		return schedulerapi.SchedulerNode{}, ErrNoNodesAvailable
 	}
 
 	// TODO: we should compute this once and dynamically update it using Watch, not constantly re-compute.
 	// But at least we're now only doing it in one place
 	pods, err := g.pods.List(labels.Everything())
 	if err != nil {
-		return "", err
+		return schedulerapi.SchedulerNode{}, err
 	}
 	nodeNameToInfo := schedulercache.CreateNodeNameToInfoMap(pods)
 	filteredNodes, failedPredicateMap, err := findNodesThatFit(pod, nodeNameToInfo, g.predicates, nodes, g.extenders)
 	if err != nil {
-		return "", err
+		return schedulerapi.SchedulerNode{}, err
 	}
 
 	if len(filteredNodes.Items) == 0 {
-		return "", &FitError{
+		return schedulerapi.SchedulerNode{}, &FitError{
 			Pod:              pod,
 			FailedPredicates: failedPredicateMap,
 		}
@@ -98,10 +98,10 @@ func (g *genericScheduler) Schedule(pod *api.Pod, nodeLister algorithm.NodeListe
 
 	priorityList, err := PrioritizeNodes(pod, nodeNameToInfo, g.pods, g.prioritizers, algorithm.FakeNodeLister(filteredNodes), g.extenders)
 	if err != nil {
-		return "", err
+		return schedulerapi.SchedulerNode{}, err
 	}
 
-	return g.selectHost(priorityList)
+	return AllocateResources(pod, nodeNameToInfo, priorityList, filteredNodes)
 }
 
 // selectHost takes a prioritized list of nodes and then picks one
@@ -132,6 +132,7 @@ func findNodesThatFit(pod *api.Pod, nodeNameToInfo map[string]*schedulercache.No
 	for _, node := range nodes.Items {
 		fits := true
 		for name, predicate := range predicateFuncs {
+			glog.V(10).Infof("Scheduler on node(%s) func: %s", node.Name, name)
 			fit, err := predicate(pod, node.Name, nodeNameToInfo[node.Name])
 			if err != nil {
 				switch e := err.(type) {
@@ -157,6 +158,7 @@ func findNodesThatFit(pod *api.Pod, nodeNameToInfo map[string]*schedulercache.No
 				break
 			}
 		}
+		glog.V(10).Infof("Node(%s) fit %+v", node.Name, fits)
 		if fits {
 			filtered = append(filtered, node)
 		}
@@ -269,6 +271,61 @@ func PrioritizeNodes(
 		result = append(result, schedulerapi.HostPriority{Host: host, Score: score})
 	}
 	return result, nil
+}
+
+func AllocateResources(
+	pod *api.Pod,
+	nodeNameToInfo map[string]*schedulercache.NodeInfo,
+	priorityList schedulerapi.HostPriorityList,
+	nodeList api.NodeList,
+) (schedulerapi.SchedulerNode, error) {
+	if len(priorityList) == 0 {
+		return schedulerapi.SchedulerNode{}, fmt.Errorf("empty priorityList")
+	}
+
+	sort.Sort(sort.Reverse(priorityList))
+	mapNode := make(map[string]*api.Node, len(nodeList.Items))
+	for _, node := range nodeList.Items {
+		mapNode[node.Name] = &node
+	}
+	var (
+		nodeName     string
+		normalCPUSet []string
+		numaCPUSet   []string
+		cpuset       string
+		err          error
+	)
+	for _, v := range priorityList {
+		nodeName = v.Host
+		node, ok := mapNode[nodeName]
+		if !ok {
+			continue
+		}
+		normalCPUSet, numaCPUSet, err = NumaCpuSelect(pod, node, nodeNameToInfo[nodeName].Pods())
+		if err != nil {
+			glog.Errorf("Failed to select cpuset on node(%s): %v", nodeName, err)
+			continue
+		}
+		if numaCPUSet != nil {
+			glog.V(5).Infof("Select node: %s score: %d", nodeName, v.Score)
+			break
+		}
+	}
+	if numaCPUSet != nil {
+		cpuset = strings.Join(numaCPUSet, ",")
+	} else if normalCPUSet != nil {
+		cpuset = strings.Join(normalCPUSet, ",")
+	}
+	network, err := AllocatePodNetwork(pod, mapNode[nodeName], nodeNameToInfo[nodeName].Pods())
+	if err != nil {
+		return schedulerapi.SchedulerNode{}, err
+	}
+	glog.V(3).Infof("AllocateResource [nodeName: %s] [cpuset: %s] [network: %+v]", nodeName, cpuset, network)
+	return schedulerapi.SchedulerNode{
+		Name:    nodeName,
+		CpuSet:  cpuset,
+		Network: network,
+	}, nil
 }
 
 // EqualPriority is a prioritizer function that gives an equal weight of one to all nodes

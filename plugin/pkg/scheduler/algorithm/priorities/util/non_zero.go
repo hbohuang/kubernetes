@@ -48,3 +48,16 @@ func GetNonzeroRequests(requests *api.ResourceList) (int64, int64) {
 	}
 	return outMilliCPU, outMemory
 }
+
+const DefaultNodeCore int64 = 24 // 24 core perl node
+
+func GetNonZeroCore(resource *api.ResourceList) int64 {
+	var outCore int64
+	// Override if un-set, but not if explicitly set to zero
+	if _, found := (*resource)[api.ResourceCPU]; !found {
+		outCore = DefaultNodeCore
+	} else {
+		outCore = resource.Cpu().Value()
+	}
+	return outCore
+}

@@ -171,3 +171,9 @@ func (h HostPriorityList) Less(i, j int) bool {
 func (h HostPriorityList) Swap(i, j int) {
 	h[i], h[j] = h[j], h[i]
 }
+
+type SchedulerNode struct {
+	Name    string
+	Network api.Network
+	CpuSet  string
+}

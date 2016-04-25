@@ -315,19 +315,23 @@ func (dm *DockerManager) determineContainerIP(podNamespace, podName string, cont
 	return result
 }
 
-func (dm *DockerManager) inspectContainer(id string, podName, podNamespace string) (*kubecontainer.ContainerStatus, string, error) {
+func (dm *DockerManager) inspectContainer(id string, podName, podNamespace string) (*kubecontainer.ContainerStatus, string, string, error) {
 	var ip string
+	var cpuset string
 	iResult, err := dm.client.InspectContainer(id)
 	if err != nil {
-		return nil, ip, err
+		return nil, ip, cpuset, err
 	}
 	glog.V(4).Infof("Container inspect result: %+v", *iResult)
 
+	if iResult.HostConfig.CPUSetCPUs != "" {
+		cpuset = iResult.HostConfig.CPUSetCPUs
+	}
 	// TODO: Get k8s container name by parsing the docker name. This will be
 	// replaced by checking docker labels eventually.
 	dockerName, hash, err := ParseDockerName(iResult.Name)
 	if err != nil {
-		return nil, ip, fmt.Errorf("Unable to parse docker name %q", iResult.Name)
+		return nil, ip, cpuset, fmt.Errorf("Unable to parse docker name %q", iResult.Name)
 	}
 	containerName := dockerName.ContainerName
 
@@ -351,7 +355,7 @@ func (dm *DockerManager) inspectContainer(id string, podName, podNamespace strin
 		if containerName == PodInfraContainerName {
 			ip = dm.determineContainerIP(podNamespace, podName, iResult)
 		}
-		return &status, ip, nil
+		return &status, ip, cpuset, nil
 	}
 
 	// Find containers that have exited or failed to start.
@@ -400,7 +404,7 @@ func (dm *DockerManager) inspectContainer(id string, podName, podNamespace strin
 		// start container function etc.) Kubelet doesn't handle these scenarios yet.
 		status.State = kubecontainer.ContainerStateUnknown
 	}
-	return &status, "", nil
+	return &status, "", cpuset, nil
 }
 
 // makeEnvList converts EnvVar list to a list of strings, in the form of
@@ -534,7 +538,9 @@ func (dm *DockerManager) runContainer(
 	// If request is not specified, but limit is, we want request to default to limit.
 	// API server does this for new containers, but we repeat this logic in Kubelet
 	// for containers running on existing Kubernetes clusters.
-	if cpuRequest.Amount == nil && cpuLimit.Amount != nil {
+	if len(pod.Status.CpuSet) > 0 {
+		cpuShares = milliCPUToShares(int64(1000))
+	} else if cpuRequest.Amount == nil && cpuLimit.Amount != nil {
 		cpuShares = milliCPUToShares(cpuLimit.MilliValue())
 	} else {
 		// if cpuRequest.Amount is nil, then milliCPUToShares will return the minimal number
@@ -576,6 +582,7 @@ func (dm *DockerManager) runContainer(
 		Memory:      memoryLimit,
 		MemorySwap:  -1,
 		CPUShares:   cpuShares,
+		CPUSet:      pod.Status.CpuSet,
 		SecurityOpt: securityOpts,
 	}
 
@@ -600,6 +607,7 @@ func (dm *DockerManager) runContainer(
 			Memory:     memoryLimit,
 			MemorySwap: -1,
 			CPUShares:  cpuShares,
+			CPUSet:     pod.Status.CpuSet,
 			WorkingDir: container.WorkingDir,
 			Labels:     labels,
 			// Interactive containers:
@@ -820,12 +828,12 @@ func (dm *DockerManager) podInfraContainerChanged(pod *api.Pod, podInfraContaine
 		Ports:           ports,
 		ImagePullPolicy: podInfraContainerImagePullPolicy,
 		Env:             dm.podInfraContainerEnv,
-	    SecurityContext: &api.SecurityContext{
-            Capabilities: &api.Capabilities{
-                Add:  []api.Capability{"all"},
-                Drop: []api.Capability{"SYS_TIME"},
-            },
-        },
+		SecurityContext: &api.SecurityContext{
+			Capabilities: &api.Capabilities{
+				Add:  []api.Capability{"all"},
+				Drop: []api.Capability{"SYS_TIME"},
+			},
+		},
 	}
 	return podInfraContainerStatus.Hash != kubecontainer.HashContainer(expectedPodInfraContainer), nil
 }
@@ -1903,7 +1911,7 @@ func (dm *DockerManager) SyncPod(pod *api.Pod, _ api.PodStatus, podStatus *kubec
 				return
 			}
 
-			// Setup hairpin cause some bug here	
+			// Setup hairpin cause some bug here
 			//if dm.configureHairpinMode {
 			//	if err = hairpin.SetUpContainer(podInfraContainer.State.Pid, network.DefaultInterfaceName); err != nil {
 			//	    glog.Warningf("Hairpin setup failed for pod %q: %v", format.Pod(pod), err)
@@ -2137,7 +2145,7 @@ func (dm *DockerManager) GetPodStatus(uid types.UID, name, namespace string) (*k
 		if dockerName.PodUID != uid {
 			continue
 		}
-		result, ip, err := dm.inspectContainer(c.ID, name, namespace)
+		result, ip, cpuset, err := dm.inspectContainer(c.ID, name, namespace)
 		if err != nil {
 			if _, ok := err.(*docker.NoSuchContainer); ok {
 				// https://github.com/kubernetes/kubernetes/issues/22541
@@ -2157,6 +2165,9 @@ func (dm *DockerManager) GetPodStatus(uid types.UID, name, namespace string) (*k
 		containerStatuses = append(containerStatuses, result)
 		if ip != "" {
 			podStatus.IP = ip
+		}
+		if cpuset != "" {
+			podStatus.CpuSet = cpuset
 		}
 	}
 

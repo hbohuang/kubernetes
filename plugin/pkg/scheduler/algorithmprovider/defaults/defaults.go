@@ -128,6 +128,13 @@ func defaultPredicates() sets.String {
 				return predicates.NewMaxPDVolumeCountPredicate(predicates.GCEPDVolumeFilter, maxVols, args.PVInfo, args.PVCInfo)
 			},
 		),
+		// Fit is determined by network availability.
+		factory.RegisterFitPredicateFactory(
+			"PodFitsNetwork",
+			func(args factory.PluginFactoryArgs) algorithm.FitPredicate {
+				return predicates.NewNetworkFitPredicate(args.NodeInfo)
+			},
+		),
 	)
 }
 

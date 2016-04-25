@@ -466,13 +466,13 @@ func (nc *NodeController) monitorNodeStatus() error {
 
 		if readyCondition != nil {
 			// Check eviction timeout against decisionTimestamp
-			if lastReadyCondition.Status == api.ConditionFalse &&
+			if lastReadyCondition.Status == api.ConditionFalse && nc.podEvictionTimeout > 0 &&
 				decisionTimestamp.After(nc.nodeStatusMap[node.Name].readyTransitionTimestamp.Add(nc.podEvictionTimeout)) {
 				if nc.evictPods(node.Name) {
 					glog.Infof("Evicting pods on node %s: %v is later than %v + %v", node.Name, decisionTimestamp, nc.nodeStatusMap[node.Name].readyTransitionTimestamp, nc.podEvictionTimeout)
 				}
 			}
-			if lastReadyCondition.Status == api.ConditionUnknown &&
+			if lastReadyCondition.Status == api.ConditionUnknown && nc.podEvictionTimeout > 0 &&
 				decisionTimestamp.After(nc.nodeStatusMap[node.Name].probeTimestamp.Add(nc.podEvictionTimeout)) {
 				if nc.evictPods(node.Name) {
 					glog.Infof("Evicting pods on node %s: %v is later than %v + %v", node.Name, decisionTimestamp, nc.nodeStatusMap[node.Name].readyTransitionTimestamp, nc.podEvictionTimeout-gracePeriod)

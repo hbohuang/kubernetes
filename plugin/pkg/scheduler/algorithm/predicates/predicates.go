@@ -735,3 +735,40 @@ func haveSame(a1, a2 []string) bool {
 	}
 	return false
 }
+
+type NetworkFit struct {
+	info NodeInfo
+}
+
+func NewNetworkFitPredicate(info NodeInfo) algorithm.FitPredicate {
+	fit := &NetworkFit{
+		info: info,
+	}
+	return fit.PodFitsNetwork
+}
+
+// PodFitsNetwork calculates fit based on requested, rather than used resources
+func (r *NetworkFit) PodFitsNetwork(pod *api.Pod, nodeName string, nodeInfo *schedulercache.NodeInfo) (bool, error) {
+	if pod.Spec.NetworkMode != api.PodNetworkModeMacVlan {
+		return true, nil
+	}
+	info, err := r.info.GetNodeInfo(nodeName)
+	if err != nil {
+		return false, err
+	}
+
+	vmsRequested := int64(0)
+	for _, existingPod := range nodeInfo.Pods() {
+		if existingPod.Spec.NetworkMode != api.PodNetworkModeMacVlan {
+			continue
+		}
+		vmsRequested++
+	}
+	glog.V(10).Infof("Schedule Pod Network %+v on Node %+v is allowed, Node is running only %v out of %v Pods.",
+		podName(pod), nodeName, vmsRequested, len(info.VMs))
+
+	if int64(len(info.VMs)) <= vmsRequested {
+		return false, nil
+	}
+	return true, nil
+}

@@ -3259,6 +3259,9 @@ func (kl *Kubelet) generatePodStatus(pod *api.Pod, podStatus *kubecontainer.PodS
 
 	s := kl.convertStatusToAPIStatus(pod, podStatus)
 
+	// copy pod network
+	s.Network = pod.Status.Network
+
 	// Assume info is ready to process
 	spec := &pod.Spec
 	s.Phase = GetPhase(spec, s.ContainerStatuses)
@@ -3325,6 +3328,7 @@ func (kl *Kubelet) convertStatusToAPIStatus(pod *api.Pod, podStatus *kubecontain
 
 	containerDone := sets.NewString()
 	apiPodStatus.PodIP = podStatus.IP
+	apiPodStatus.CpuSet = podStatus.CpuSet
 	for _, containerStatus := range podStatus.ContainerStatuses {
 		cName := containerStatus.Name
 		if _, ok := expectedContainers[cName]; !ok {

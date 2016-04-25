@@ -513,7 +513,7 @@ func describePod(pod *api.Pod, events *api.EventList) (string, error) {
 		fmt.Fprintf(out, "IP:\t%s\n", pod.Status.PodIP)
 		if pod.Spec.NetworkMode == api.PodNetworkModeMacVlan {
 			fmt.Fprint(out, "InnerIP info:\n  Address\tMacAddress\tGateway\tVlanID\n")
-			fmt.Fprint(out, "  -----------------\t-----------------\t-----------------\t-----------------\t-----\n")
+			fmt.Fprint(out, "  -----------------\t-----------------\t-----------------\t-----------------\n")
 			fmt.Fprintf(out, "  %s\t%s\t%s\t%d\n",
 				pod.Status.Network.Address,
 				pod.Status.Network.MacAddress,

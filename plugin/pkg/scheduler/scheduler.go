@@ -125,8 +125,10 @@ func (s *Scheduler) scheduleOne() {
 		ObjectMeta: api.ObjectMeta{Namespace: pod.Namespace, Name: pod.Name},
 		Target: api.ObjectReference{
 			Kind: "Node",
-			Name: dest,
+			Name: dest.Name,
 		},
+		CpuSet:  dest.CpuSet,
+		Network: dest.Network,
 	}
 
 	// We want to add the pod to the model if and only if the bind succeeds,
@@ -144,7 +146,7 @@ func (s *Scheduler) scheduleOne() {
 		s.config.Recorder.Eventf(pod, api.EventTypeNormal, "Scheduled", "Successfully assigned %v to %v", pod.Name, dest)
 		// tell the model to assume that this binding took effect.
 		assumed := *pod
-		assumed.Spec.NodeName = dest
+		assumed.Spec.NodeName = dest.Name
 		s.config.Modeler.AssumePod(&assumed)
 	})
 
