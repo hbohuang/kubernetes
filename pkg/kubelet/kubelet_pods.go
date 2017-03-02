@@ -28,6 +28,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -40,6 +41,7 @@ import (
 	"k8s.io/kubernetes/pkg/kubelet/cm"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
 	"k8s.io/kubernetes/pkg/kubelet/envvars"
+	"k8s.io/kubernetes/pkg/kubelet/gpu/nvidia"
 	"k8s.io/kubernetes/pkg/kubelet/images"
 	"k8s.io/kubernetes/pkg/kubelet/server/remotecommand"
 	"k8s.io/kubernetes/pkg/kubelet/status"
@@ -79,16 +81,20 @@ func (kl *Kubelet) getActivePods() []*api.Pod {
 }
 
 // makeDevices determines the devices for the given container.
-// Experimental. For now, we hardcode /dev/nvidia0 no matter what the user asks for
-// (we only support one device per node).
-// TODO: add support for more than 1 GPU after #28216.
-func makeDevices(container *api.Container) []kubecontainer.DeviceInfo {
+func (kl *Kubelet) makeDevices(container *api.Container) []kubecontainer.DeviceInfo {
 	nvidiaGPULimit := container.Resources.Limits.NvidiaGPU()
+
 	if nvidiaGPULimit.Value() != 0 {
-		return []kubecontainer.DeviceInfo{
-			{PathOnHost: "/dev/nvidia0", PathInContainer: "/dev/nvidia0", Permissions: "mrw"},
-			{PathOnHost: "/dev/nvidiactl", PathInContainer: "/dev/nvidiactl", Permissions: "mrw"},
-			{PathOnHost: "/dev/nvidia-uvm", PathInContainer: "/dev/nvidia-uvm", Permissions: "mrw"},
+		if nvidiaGPUPaths, err := kl.nvidiaGPUManager.AllocateGPUs(int(nvidiaGPULimit.Value())); err == nil {
+			devices := []kubecontainer.DeviceInfo{{PathOnHost: nvidia.NvidiaCtlDevice, PathInContainer: nvidia.NvidiaCtlDevice, Permissions: "mrw"},
+				{PathOnHost: nvidia.NvidiaUVMDevice, PathInContainer: nvidia.NvidiaUVMDevice, Permissions: "mrw"}}
+
+			for i, path := range nvidiaGPUPaths {
+				devices = append(devices, kubecontainer.DeviceInfo{PathOnHost: path, PathInContainer: "/dev/nvidia" + strconv.Itoa(i), Permissions: "mrw"})
+			}
+
+			return devices
+
 		}
 	}
 
@@ -150,6 +156,9 @@ func makeMounts(pod *api.Pod, podDir string, container *api.Container, hostName,
 		})
 	}
 	if mountEtcHostsFile {
+		if len(hostDomain) <= 0 {
+			hostDomain = strings.Join([]string{pod.Namespace, "pod.cluster.local"}, ".")
+		}
 		hostsMount, err := makeHostsMount(podDir, podIP, hostName, hostDomain)
 		if err != nil {
 			return nil, err
@@ -190,6 +199,8 @@ func ensureHostsFile(fileName, hostIP, hostName, hostDomainName string) error {
 	buffer.WriteString("fe00::0\tip6-mcastprefix\n")
 	buffer.WriteString("fe00::1\tip6-allnodes\n")
 	buffer.WriteString("fe00::2\tip6-allrouters\n")
+	buffer.WriteString("10.50.142.211\ttest.server.etcd\n")
+	buffer.WriteString("10.50.142.211\ttest.server.k8s\n")
 	if len(hostDomainName) > 0 {
 		buffer.WriteString(fmt.Sprintf("%s\t%s.%s\t%s\n", hostIP, hostName, hostDomainName, hostName))
 	} else {
@@ -304,7 +315,7 @@ func (kl *Kubelet) GenerateRunContainerOptions(pod *api.Pod, container *api.Cont
 	volumes := kl.volumeManager.GetMountedVolumesForPod(podName)
 
 	opts.PortMappings = makePortMappings(container)
-	opts.Devices = makeDevices(container)
+	opts.Devices = kl.makeDevices(container)
 
 	opts.Mounts, err = makeMounts(pod, kl.getPodDir(pod.UID), container, hostname, hostDomainName, podIP, volumes)
 	if err != nil {
