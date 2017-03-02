@@ -53,7 +53,7 @@ import (
 	"k8s.io/kubernetes/pkg/kubelet/lifecycle"
 	"k8s.io/kubernetes/pkg/kubelet/metrics"
 	"k8s.io/kubernetes/pkg/kubelet/network"
-//	"k8s.io/kubernetes/pkg/kubelet/network/hairpin"
+	//	"k8s.io/kubernetes/pkg/kubelet/network/hairpin"
 	proberesults "k8s.io/kubernetes/pkg/kubelet/prober/results"
 	"k8s.io/kubernetes/pkg/kubelet/qos"
 	"k8s.io/kubernetes/pkg/kubelet/types"
@@ -2537,6 +2537,10 @@ func (dm *DockerManager) doBackOff(pod *api.Pod, container *api.Container, podSt
 			err := fmt.Errorf("Back-off %s restarting failed container=%s pod=%s", backOff.Get(stableName), container.Name, format.Pod(pod))
 			glog.Infof("%s", err.Error())
 			return true, kubecontainer.ErrCrashLoopBackOff, err.Error()
+		}
+		maxRestartTimes, err := strconv.Atoi(pod.ObjectMeta.Annotations["maxRestartTimes"])
+		if err == nil && cStatus.RestartCount >= maxRestartTimes {
+			return true, kubecontainer.ErrCrashTooMany, "The maxRestartTimes is meeted by RestartCount"
 		}
 		backOff.Next(stableName, ts)
 	}
